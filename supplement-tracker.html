@@ -1,0 +1,705 @@
+<title>Supplement-Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one narrow column like a pill organizer. Sticky header with tabs; each time of day is a compartment holding capsule toggles. */
+:root {
+  --bg: #EEF2EF;
+  --surface: #FFFFFF;
+  --ink: #17201C;
+  --muted: #5B6862;
+  --line: #D3DCD6;
+  --line-soft: #E6ECE8;
+  --accent: #0D7A5F;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #CFEBDF;
+  --amber: #A9650A;
+  --amber-soft: #F6E7CC;
+  --danger: #B42318;
+  --heat-0: #E2E8E4;
+  --heat-1: #B9DFCF;
+  --heat-2: #79C3A6;
+  --heat-3: #0D7A5F;
+  --f-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --f-body: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101513; --surface: #19201D; --ink: #E4ECE7; --muted: #93A29A; --line: #2D3833; --line-soft: #222B27;
+    --accent: #3CC59C; --accent-ink: #0B1712; --accent-soft: #173A2F; --amber: #E8AA45; --amber-soft: #3A2C15; --danger: #F27A6E;
+    --heat-0: #222B27; --heat-1: #1E4A3C; --heat-2: #2A8467; --heat-3: #3CC59C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101513; --surface: #19201D; --ink: #E4ECE7; --muted: #93A29A; --line: #2D3833; --line-soft: #222B27;
+  --accent: #3CC59C; --accent-ink: #0B1712; --accent-soft: #173A2F; --amber: #E8AA45; --amber-soft: #3A2C15; --danger: #F27A6E;
+  --heat-0: #222B27; --heat-1: #1E4A3C; --heat-2: #2A8467; --heat-3: #3CC59C;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 1rem; line-height: 1.45; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 34rem; margin: 0 auto; padding-inline: 16px; padding-block: 0 3rem; }
+
+/* Header */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 0.9rem 0.6rem; display: grid; gap: 0.7rem; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.brand b { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.brand span { font-size: 0.75rem; color: var(--muted); }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--line-soft); border-radius: 999px; padding: 3px; }
+.tabs button { border: 0; background: transparent; border-radius: 999px; padding: 0.5rem 0.4rem; font-weight: 600; font-size: 0.9rem; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+
+main { display: grid; gap: 1.1rem; }
+
+/* Day switcher */
+.daynav { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.5rem; padding-top: 0.4rem; }
+.daynav h1 { margin: 0; text-align: center; font-family: var(--f-display); font-weight: 700; font-size: clamp(1.35rem, 5vw, 1.7rem); letter-spacing: -0.02em; line-height: 1.15; text-wrap: balance; }
+.daynav h1 small { display: block; font-family: var(--f-body); font-weight: 500; font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.15rem; }
+.iconbtn { width: 2.6rem; height: 2.6rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; font-size: 1.1rem; }
+.iconbtn:disabled { opacity: 0.35; cursor: default; }
+.linkbtn { border: 0; background: none; color: var(--accent); font-weight: 600; padding: 0.2rem 0; text-decoration: underline; text-underline-offset: 3px; }
+.center { text-align: center; }
+
+/* Progress */
+.progress { display: grid; gap: 0.5rem; }
+.progress-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+.progress-row strong { font-family: var(--f-display); font-size: 1.15rem; }
+.progress-row span { color: var(--muted); font-size: 0.85rem; }
+.pills { display: flex; gap: 4px; }
+.pills i { flex: 1; height: 0.55rem; border-radius: 999px; background: var(--line); transition: background 0.25s; }
+.pills i.on { background: var(--accent); }
+
+/* Compartments */
+.slot { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.slot-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.8rem 1rem 0.7rem; border-bottom: 1px solid var(--line-soft); flex-wrap: wrap; }
+.slot-head h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; }
+.slot-head h2 small { font-family: var(--f-body); font-weight: 500; font-size: 0.8rem; color: var(--muted); margin-left: 0.4rem; }
+.slot-head .right { display: flex; align-items: center; gap: 0.6rem; }
+.count { font-size: 0.8rem; color: var(--muted); }
+.count.done { color: var(--accent); font-weight: 600; }
+.smallbtn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: 600; }
+
+.row { width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.9rem; padding: 0.8rem 1rem; border: 0; background: transparent; text-align: left; min-height: 3.6rem; }
+.row + .row { border-top: 1px solid var(--line-soft); }
+.row:hover { background: var(--line-soft); }
+.row .txt { min-width: 0; display: grid; gap: 0.1rem; }
+.row .name { font-weight: 600; }
+.row .dose { font-family: var(--f-mono); font-size: 0.8rem; color: var(--muted); }
+.row .hint { font-size: 0.8rem; color: var(--muted); }
+.row .status { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.row[aria-pressed="true"] .status { color: var(--accent); font-weight: 600; }
+.row[aria-pressed="true"] .name { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+
+.cap { --cap-l: var(--surface); --cap-r: var(--line-soft); --cap-b: var(--line);
+  width: 2.5rem; height: 1.15rem; border-radius: 999px; border: 1.5px solid var(--cap-b);
+  background: linear-gradient(90deg, var(--cap-l) 0 50%, var(--cap-r) 50% 100%);
+  transform: rotate(-14deg); transition: transform 0.2s, background 0.2s; }
+.row[aria-pressed="true"] .cap { --cap-l: var(--accent); --cap-r: var(--accent-soft); --cap-b: var(--accent); }
+.row.pop .cap { animation: pop 0.35s ease-out; }
+@keyframes pop { 0% { transform: rotate(-14deg) scale(1); } 45% { transform: rotate(-4deg) scale(1.25); } 100% { transform: rotate(-14deg) scale(1); } }
+
+/* Note */
+.field { display: grid; gap: 0.35rem; }
+.field label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 0.65rem 0.75rem; }
+.field textarea { min-height: 4.5rem; resize: vertical; }
+.saved { font-size: 0.75rem; color: var(--muted); min-height: 1em; }
+
+/* History */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 0.8rem 0.85rem; display: grid; gap: 0.15rem; min-width: 0; }
+.stat b { font-family: var(--f-display); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 0.75rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1rem; display: grid; gap: 0.8rem; }
+.card h2 { margin: 0; font-family: var(--f-display); font-size: 1.1rem; font-weight: 700; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cal .dow { font-size: 0.7rem; color: var(--muted); text-align: center; letter-spacing: 0.04em; }
+.cal button { aspect-ratio: 1; max-width: 100%; border: 0; border-radius: 8px; background: var(--heat-0); font-family: var(--f-mono); font-size: 0.72rem; color: var(--muted); display: grid; place-items: center; padding: 0; }
+.cal button.l1 { background: var(--heat-1); color: var(--ink); }
+.cal button.l2 { background: var(--heat-2); color: var(--ink); }
+.cal button.l3 { background: var(--heat-3); color: var(--accent-ink); font-weight: 600; }
+.cal button.today { box-shadow: inset 0 0 0 2px var(--ink); }
+.cal .future { aspect-ratio: 1; border-radius: 8px; border: 1px dashed var(--line); }
+.legend { display: flex; align-items: center; gap: 5px; font-size: 0.72rem; color: var(--muted); flex-wrap: wrap; }
+.legend i { width: 0.9rem; height: 0.9rem; border-radius: 4px; display: inline-block; }
+.bars { display: grid; gap: 0.65rem; }
+.bar { display: grid; gap: 0.25rem; }
+.bar-top { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.88rem; }
+.bar-top span:last-child { color: var(--muted); }
+.track { height: 0.5rem; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.track i.low { background: var(--amber); }
+
+/* List editor */
+.items { display: grid; }
+.item { display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center; padding: 0.75rem 0; border-top: 1px solid var(--line-soft); }
+.item:first-child { border-top: 0; }
+.item .txt { min-width: 0; }
+.item .name { font-weight: 600; }
+.item .meta { font-size: 0.8rem; color: var(--muted); }
+.tag { display: inline-block; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--amber-soft); color: var(--amber); margin-right: 0.35rem; }
+.form { display: grid; gap: 0.75rem; padding: 0.9rem; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); margin-block: 0.4rem; }
+.form-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 0.55rem 1rem; font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn.wide { width: 100%; }
+.spacer { flex: 1; }
+.confirm { font-size: 0.85rem; color: var(--danger); font-weight: 600; }
+
+details.ref { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 0.9rem 1rem; }
+details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: pointer; }
+.ref-table { overflow-x: auto; margin-top: 0.75rem; }
+.ref-table table { border-collapse: collapse; width: 100%; font-size: 0.85rem; min-width: 26rem; }
+.ref-table th, .ref-table td { text-align: left; padding: 0.45rem 0.5rem 0.45rem 0; border-top: 1px solid var(--line-soft); vertical-align: top; }
+.ref-table th { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-top: 0; }
+.ref-table td:nth-child(2) { font-family: var(--f-mono); font-size: 0.8rem; white-space: nowrap; }
+
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 16px; padding: 1.5rem 1.2rem; text-align: center; display: grid; gap: 0.6rem; justify-items: center; }
+.empty p { margin: 0; color: var(--muted); max-width: 30ch; }
+.note-banner { font-size: 0.8rem; color: var(--amber); background: var(--amber-soft); border-radius: 10px; padding: 0.55rem 0.8rem; }
+.fine { font-size: 0.75rem; color: var(--muted); text-align: center; max-width: 52ch; margin: 0.5rem auto 0; }
+
+.toast { position: fixed; left: 50%; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 0.6rem 1rem; border-radius: 10px; font-size: 0.85rem; max-width: calc(100% - 32px); z-index: 10; }
+
+@media (max-width: 380px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .row { gap: 0.7rem; padding-inline: 0.8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row.pop .cap { animation: none; }
+  .pills i, .cap { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>Supplement-Tracker</b><span id="mode-label">Lädt…</span></div>
+    <div class="tabs" role="tablist" aria-label="Ansicht">
+      <button type="button" role="tab" id="tab-today" data-act="tab" data-v="today" aria-selected="true">Heute</button>
+      <button type="button" role="tab" id="tab-history" data-act="tab" data-v="history" aria-selected="false">Verlauf</button>
+      <button type="button" role="tab" id="tab-list" data-act="tab" data-v="list" aria-selected="false">Meine Liste</button>
+    </div>
+  </header>
+  <main id="app" aria-live="polite">
+    <div class="empty"><p>Deine Supplement-Liste wird geladen. Danach kannst du hier abhaken, was du heute genommen hast.</p></div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const SLOTS = [
+    { id: "morning", label: "Morgens", sub: "zum Frühstück" },
+    { id: "noon", label: "Mittags", sub: "zum Mittagessen" },
+    { id: "evening", label: "Abends", sub: "vor dem Schlafen" }
+  ];
+  const SLOT_LABEL = Object.fromEntries(SLOTS.map(s => [s.id, s.label]));
+  const LOCAL_KEY = "supplement-tracker.v1";
+
+  // ---------- Dates ----------
+  const pad = n => String(n).padStart(2, "0");
+  const keyOf = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+  const addDays = (k, n) => { const d = parseKey(k); d.setDate(d.getDate() + n); return keyOf(d); };
+  const todayKey = () => keyOf(new Date());
+  const nowHM = () => { const d = new Date(); return pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+  const weekday = k => parseKey(k).toLocaleDateString("de-DE", { weekday: "long" });
+  const dayMonth = k => parseKey(k).toLocaleDateString("de-DE", { day: "numeric", month: "long" });
+
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- State ----------
+  const state = {
+    view: "today",
+    date: todayKey(),
+    mode: "loading",          // loading | db | local
+    supps: [],
+    days: {},
+    loaded: { supps: false, days: false },
+    editing: null,            // supplement id, "new", or null
+    draft: null,
+    confirmDelete: null,
+    noteDraft: {},
+    noteStatus: "",
+    readOnly: false,
+    popId: null
+  };
+
+  const sortedSupps = () => state.supps.slice().sort((a, b) =>
+    (SLOTS.findIndex(s => s.id === a.slot) - SLOTS.findIndex(s => s.id === b.slot)) ||
+    ((a.order ?? 99) - (b.order ?? 99)) || String(a.name).localeCompare(String(b.name), "de"));
+
+  const dayOf = k => state.days[k] || { date: k, taken: {}, note: "" };
+
+  // ---------- Storage ----------
+  const store = {
+    db: null,
+    queues: {},
+    async init() {
+      let db = null;
+      try { db = window.claude && window.claude.use ? await window.claude.use("db") : null; } catch (e) { db = null; }
+      if (db) {
+        this.db = db;
+        state.mode = "db";
+        db.collection("supplements").onSnapshot(snap => {
+          state.supps = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+          state.loaded.supps = true;
+          render();
+        }, err => this.fatal(err));
+        db.collection("days").orderBy("date", "desc").limit(500).onSnapshot(snap => {
+          const m = {};
+          snap.docs.forEach(d => { m[d.id] = d.data(); });
+          state.days = m;
+          state.loaded.days = true;
+          render();
+        }, err => this.fatal(err));
+      } else {
+        state.mode = "local";
+        try {
+          const raw = localStorage.getItem(LOCAL_KEY);
+          if (raw) { const parsed = JSON.parse(raw); state.supps = parsed.supps || []; state.days = parsed.days || {}; }
+        } catch (e) { /* storage unavailable: start empty */ }
+        state.loaded.supps = state.loaded.days = true;
+        render();
+      }
+    },
+    fatal(err) {
+      if (err && err.code === "revoked") { state.readOnly = true; render(); return; }
+      toast("Die Verbindung zum Speicher ist abgebrochen. Lade die Seite neu.");
+    },
+    persistLocal() {
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify({ supps: state.supps, days: state.days })); }
+      catch (e) { toast("Speichern im Browser ist hier nicht möglich."); }
+    },
+    enqueue(key, fn) {
+      const run = async () => {
+        try { await fn(); }
+        catch (err) {
+          if (err && err.code === "unavailable") {
+            await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
+            try { await fn(); return; } catch (e2) { err = e2; }
+          }
+          handleWriteError(err);
+        }
+      };
+      const p = (this.queues[key] || Promise.resolve()).then(run);
+      this.queues[key] = p;
+      return p;
+    },
+    saveDay(k) {
+      const body = Object.assign({}, dayOf(k), { date: k });
+      if (this.db) return this.enqueue("days/" + k, () => this.db.collection("days").doc(k).set(body));
+      this.persistLocal();
+    },
+    saveSupp(s) {
+      const { id, ...body } = s;
+      if (this.db) return this.enqueue("supplements/" + id, () => this.db.collection("supplements").doc(id).set(body));
+      this.persistLocal();
+    },
+    deleteSupp(id) {
+      if (this.db) return this.enqueue("supplements/" + id, () => this.db.collection("supplements").doc(id).delete());
+      this.persistLocal();
+    }
+  };
+
+  function handleWriteError(err) {
+    const code = err && err.code;
+    if (code === "invalid_argument" || code === "not_granted") {
+      state.readOnly = true;
+      render();
+      toast("Du kannst diese Liste nur ansehen, nicht ändern.");
+    } else if (code === "quota_exceeded") {
+      toast("Der Speicher ist voll. Lösche alte Einträge, um weiter zu tracken.");
+    } else if (code === "resource_exhausted") {
+      toast("Zu viele Änderungen auf einmal. Warte kurz und versuch es erneut.");
+    } else {
+      toast("Speichern hat nicht geklappt. Prüfe deine Verbindung und versuch es erneut.");
+    }
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+
+  // ---------- Actions ----------
+  function toggle(id) {
+    if (state.readOnly) return;
+    const k = state.date;
+    const day = dayOf(k);
+    const taken = Object.assign({}, day.taken || {});
+    if (taken[id]) delete taken[id];
+    else { taken[id] = k === todayKey() ? nowHM() : "nachgetragen"; state.popId = id; }
+    state.days = Object.assign({}, state.days, { [k]: Object.assign({}, day, { date: k, taken }) });
+    store.saveDay(k);
+    render();
+  }
+
+  function takeSlot(slotId) {
+    if (state.readOnly) return;
+    const k = state.date;
+    const day = dayOf(k);
+    const taken = Object.assign({}, day.taken || {});
+    const stamp = k === todayKey() ? nowHM() : "nachgetragen";
+    state.supps.filter(s => s.slot === slotId && !taken[s.id]).forEach(s => { taken[s.id] = stamp; });
+    state.days = Object.assign({}, state.days, { [k]: Object.assign({}, day, { date: k, taken }) });
+    store.saveDay(k);
+    render();
+  }
+
+  let noteTimer;
+  function noteInput(value) {
+    const k = state.date;
+    state.noteDraft[k] = value;
+    state.noteStatus = "";
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => saveNote(k), 800);
+  }
+  function saveNote(k) {
+    if (state.readOnly || state.noteDraft[k] === undefined) return;
+    const day = dayOf(k);
+    if ((day.note || "") === state.noteDraft[k]) return;
+    state.days = Object.assign({}, state.days, { [k]: Object.assign({}, day, { date: k, taken: day.taken || {}, note: state.noteDraft[k] }) });
+    store.saveDay(k);
+    state.noteStatus = "Notiz gespeichert";
+    const status = document.querySelector(".saved");
+    if (status) status.textContent = state.noteStatus;
+  }
+
+  function startEdit(id) {
+    state.confirmDelete = null;
+    if (id === "new") {
+      state.editing = "new";
+      state.draft = { name: "", dose: "", slot: "morning", hint: "" };
+    } else {
+      const s = state.supps.find(x => x.id === id);
+      if (!s) return;
+      state.editing = id;
+      state.draft = { name: s.name || "", dose: s.dose || "", slot: s.slot || "morning", hint: s.hint || "" };
+    }
+    render();
+    const f = document.getElementById("f-name");
+    if (f) f.focus();
+  }
+
+  function saveEdit() {
+    const d = state.draft;
+    if (!d || !d.name.trim()) { toast("Gib dem Supplement einen Namen."); return; }
+    let s;
+    if (state.editing === "new") {
+      const maxOrder = state.supps.filter(x => x.slot === d.slot).reduce((m, x) => Math.max(m, x.order ?? 0), 0);
+      s = { id: "s" + Date.now().toString(36), name: d.name.trim(), dose: d.dose.trim(), slot: d.slot, hint: d.hint.trim(), order: maxOrder + 1 };
+      state.supps = state.supps.concat(s);
+    } else {
+      const old = state.supps.find(x => x.id === state.editing);
+      s = Object.assign({}, old, { name: d.name.trim(), dose: d.dose.trim(), slot: d.slot, hint: d.hint.trim() });
+      state.supps = state.supps.map(x => x.id === s.id ? s : x);
+    }
+    state.editing = null;
+    state.draft = null;
+    store.saveSupp(s);
+    toast("Gespeichert: " + s.name);
+    render();
+  }
+
+  function deleteSupp(id) {
+    const s = state.supps.find(x => x.id === id);
+    state.supps = state.supps.filter(x => x.id !== id);
+    state.editing = null; state.draft = null; state.confirmDelete = null;
+    store.deleteSupp(id);
+    if (s) toast("Gelöscht: " + s.name);
+    render();
+  }
+
+  // ---------- Stats ----------
+  function fraction(k) {
+    const n = state.supps.length;
+    if (!n) return 0;
+    const t = (state.days[k] && state.days[k].taken) || {};
+    return state.supps.filter(s => t[s.id]).length / n;
+  }
+  function streak() {
+    if (!state.supps.length) return 0;
+    let k = todayKey();
+    if (fraction(k) < 1) k = addDays(k, -1);
+    let n = 0;
+    while (fraction(k) === 1 && n < 1000) { n++; k = addDays(k, -1); }
+    return n;
+  }
+  function windowDays(max) {
+    const keys = Object.keys(state.days).filter(k => Object.keys(state.days[k].taken || {}).length).sort();
+    if (!keys.length) return [];
+    const first = keys[0];
+    const out = [];
+    let k = todayKey();
+    while (out.length < max && k >= first) { out.push(k); k = addDays(k, -1); }
+    return out;
+  }
+
+  // ---------- Views ----------
+  function viewToday() {
+    const k = state.date, isToday = k === todayKey();
+    const supps = sortedSupps();
+    const taken = dayOf(k).taken || {};
+    const done = supps.filter(s => taken[s.id]).length;
+    let h = "";
+    h += '<section class="daynav">' +
+      '<button type="button" class="iconbtn" id="prev-day" data-act="day" data-n="-1" aria-label="Vorheriger Tag">‹</button>' +
+      '<h1><small>' + (isToday ? "Heute · " : "") + esc(weekday(k)) + '</small>' + esc(dayMonth(k)) + '</h1>' +
+      '<button type="button" class="iconbtn" id="next-day" data-act="day" data-n="1" aria-label="Nächster Tag"' + (isToday ? " disabled" : "") + '>›</button>' +
+      '</section>';
+    if (!isToday) h += '<div class="center"><button type="button" class="linkbtn" data-act="goto" data-k="' + todayKey() + '">Zurück zu heute</button></div>';
+    if (state.readOnly) h += '<div class="note-banner">Du kannst diese Liste nur ansehen. Änderungen werden nicht gespeichert.</div>';
+
+    if (!supps.length) {
+      return h + '<div class="empty"><p>Noch keine Supplements eingetragen. Leg deine Liste an, dann kannst du hier jeden Tag abhaken.</p>' +
+        '<button type="button" class="btn primary" data-act="addfirst">Erstes Supplement hinzufügen</button></div>';
+    }
+
+    h += '<section class="progress" aria-label="Fortschritt">' +
+      '<div class="progress-row"><strong class="num">' + done + ' / ' + supps.length + '</strong><span>' +
+      (done === supps.length ? "Alles genommen" : (supps.length - done) + " noch offen") + '</span></div>' +
+      '<div class="pills" aria-hidden="true">' + supps.map(s => '<i class="' + (taken[s.id] ? "on" : "") + '"></i>').join("") + '</div></section>';
+
+    SLOTS.forEach(slot => {
+      const list = supps.filter(s => s.slot === slot.id);
+      if (!list.length) return;
+      const n = list.filter(s => taken[s.id]).length;
+      h += '<section class="slot" aria-labelledby="slot-' + slot.id + '"><div class="slot-head">' +
+        '<h2 id="slot-' + slot.id + '">' + slot.label + '<small>' + slot.sub + '</small></h2><div class="right">' +
+        '<span class="count num' + (n === list.length ? " done" : "") + '">' + n + '/' + list.length + '</span>' +
+        (n < list.length && !state.readOnly ? '<button type="button" class="smallbtn" id="all-' + slot.id + '" data-act="slot" data-slot="' + slot.id + '">Alle abhaken</button>' : "") +
+        '</div></div>';
+      list.forEach(s => {
+        const t = taken[s.id];
+        h += '<button type="button" class="row' + (state.popId === s.id ? " pop" : "") + '" id="row-' + esc(s.id) + '" data-act="toggle" data-id="' + esc(s.id) + '" aria-pressed="' + (t ? "true" : "false") + '">' +
+          '<span class="cap" aria-hidden="true"></span>' +
+          '<span class="txt"><span class="name">' + esc(s.name) + '</span>' +
+          (s.dose ? '<span class="dose">' + esc(s.dose) + '</span>' : "") +
+          (s.hint ? '<span class="hint">' + esc(s.hint) + '</span>' : "") + '</span>' +
+          '<span class="status' + (t && t !== "nachgetragen" ? " num" : "") + '">' + (t ? (t === "nachgetragen" ? "✓ nachgetragen" : "✓ " + esc(t)) : "offen") + '</span></button>';
+      });
+      h += '</section>';
+    });
+
+    const note = state.noteDraft[k] !== undefined ? state.noteDraft[k] : (dayOf(k).note || "");
+    h += '<div class="field"><label for="day-note">Notiz zum Tag</label>' +
+      '<textarea id="day-note" placeholder="z. B. Schlaf, Energie, Verträglichkeit"' + (state.readOnly ? " readonly" : "") + '>' + esc(note) + '</textarea>' +
+      '<span class="saved">' + esc(state.noteStatus) + '</span></div>';
+    h += '<p class="fine">Tippe ein Supplement an, um es abzuhaken. Die Uhrzeit wird gespeichert. Ein zweiter Tipp macht es rückgängig.</p>';
+    return h;
+  }
+
+  function viewHistory() {
+    const supps = sortedSupps();
+    if (!supps.length) {
+      return '<div class="empty"><p>Sobald du Supplements eingetragen und abgehakt hast, siehst du hier deinen Verlauf.</p>' +
+        '<button type="button" class="btn primary" data-act="addfirst">Erstes Supplement hinzufügen</button></div>';
+    }
+    const win = windowDays(30);
+    const full = win.filter(k => fraction(k) === 1).length;
+    let takenSum = 0;
+    win.forEach(k => { takenSum += fraction(k) * supps.length; });
+    const rate = win.length ? Math.round(takenSum / (win.length * supps.length) * 100) : 0;
+    const st = streak();
+
+    let h = '<section class="stats">' +
+      '<div class="stat"><b>' + st + '</b><span>' + (st === 1 ? "Tag" : "Tage") + ' in Folge komplett</span></div>' +
+      '<div class="stat"><b>' + rate + '<small style="font-size:0.9rem">%</small></b><span>eingenommen' + (win.length ? ", letzte " + win.length + " " + (win.length === 1 ? "Tag" : "Tage") : "") + '</span></div>' +
+      '<div class="stat"><b>' + full + '</b><span>komplette Tage' + (win.length ? " von " + win.length : "") + '</span></div>' +
+      '</section>';
+
+    // Calendar: 6 weeks ending with the current week, Monday first
+    const today = todayKey();
+    const td = parseKey(today);
+    const mondayOffset = (td.getDay() + 6) % 7;
+    const start = addDays(today, -mondayOffset - 35);
+    h += '<section class="card" aria-labelledby="cal-h"><h2 id="cal-h">Letzte 6 Wochen</h2><div class="cal">';
+    ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"].forEach(d => { h += '<span class="dow">' + d + '</span>'; });
+    for (let i = 0; i < 42; i++) {
+      const k = addDays(start, i);
+      if (k > today) { h += '<span class="future" aria-hidden="true"></span>'; continue; }
+      const f = fraction(k);
+      const lvl = f === 0 ? "" : f === 1 ? "l3" : f >= 0.5 ? "l2" : "l1";
+      const pct = Math.round(f * 100);
+      h += '<button type="button" class="' + lvl + (k === today ? " today" : "") + '" data-act="goto" data-k="' + k + '" aria-label="' + esc(weekday(k) + ", " + dayMonth(k) + ": " + pct + " Prozent") + '">' + parseKey(k).getDate() + '</button>';
+    }
+    h += '</div><div class="legend"><span>weniger</span><i style="background:var(--heat-0)"></i><i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><span>alles genommen</span></div>' +
+      '<p class="fine" style="margin:0;text-align:left">Tippe auf einen Tag, um ihn anzusehen oder nachzutragen.</p></section>';
+
+    h += '<section class="card" aria-labelledby="per-h"><h2 id="per-h">Pro Supplement' + (win.length ? ', letzte ' + win.length + ' ' + (win.length === 1 ? "Tag" : "Tage") : "") + '</h2>';
+    if (!win.length) {
+      h += '<p class="fine" style="margin:0;text-align:left">Noch keine Einträge. Hake heute dein erstes Supplement ab.</p>';
+    } else {
+      h += '<div class="bars">';
+      supps.forEach(s => {
+        const n = win.filter(k => state.days[k] && state.days[k].taken && state.days[k].taken[s.id]).length;
+        const p = Math.round(n / win.length * 100);
+        h += '<div class="bar"><div class="bar-top"><span>' + esc(s.name) + '</span><span class="num">' + n + '/' + win.length + '</span></div>' +
+          '<div class="track" role="img" aria-label="' + p + ' Prozent"><i class="' + (p < 70 ? "low" : "") + '" style="width:' + p + '%"></i></div></div>';
+      });
+      h += '</div>';
+    }
+    h += '</section>';
+    return h;
+  }
+
+  function formHtml() {
+    const d = state.draft;
+    const isNew = state.editing === "new";
+    let h = '<form class="form" id="supp-form" novalidate>' +
+      '<div class="field"><label for="f-name">Name</label><input id="f-name" data-f="name" value="' + esc(d.name) + '" placeholder="z. B. Vitamin D3" autocomplete="off"></div>' +
+      '<div class="field"><label for="f-dose">Dosis</label><input id="f-dose" data-f="dose" value="' + esc(d.dose) + '" placeholder="z. B. 2.000 IE · 1 Kapsel" autocomplete="off"></div>' +
+      '<div class="field"><label for="f-slot">Wann</label><select id="f-slot" data-f="slot">' +
+      SLOTS.map(s => '<option value="' + s.id + '"' + (d.slot === s.id ? " selected" : "") + '>' + s.label + ' (' + s.sub + ')</option>').join("") + '</select></div>' +
+      '<div class="field"><label for="f-hint">Hinweis</label><input id="f-hint" data-f="hint" value="' + esc(d.hint) + '" placeholder="z. B. mit etwas Fett einnehmen" autocomplete="off"></div>' +
+      '<div class="form-actions"><button type="submit" class="btn primary" id="f-save">Speichern</button>' +
+      '<button type="button" class="btn" id="f-cancel" data-act="cancel">Abbrechen</button><span class="spacer"></span>';
+    if (!isNew) {
+      if (state.confirmDelete === state.editing) {
+        h += '<span class="confirm">Wirklich löschen?</span><button type="button" class="btn danger" id="f-del-yes" data-act="del-yes">Ja, löschen</button>';
+      } else {
+        h += '<button type="button" class="btn danger" id="f-del" data-act="del">Löschen</button>';
+      }
+    }
+    h += '</div></form>';
+    return h;
+  }
+
+  function viewList() {
+    const supps = sortedSupps();
+    let h = "";
+    if (state.readOnly) h += '<div class="note-banner">Du kannst diese Liste nur ansehen.</div>';
+    h += '<section class="card" aria-labelledby="list-h"><h2 id="list-h">Meine Supplements</h2>';
+    if (!supps.length && state.editing !== "new") {
+      h += '<p class="fine" style="margin:0;text-align:left">Noch leer. Füge dein erstes Supplement hinzu.</p>';
+    }
+    h += '<div class="items">';
+    supps.forEach(s => {
+      if (state.editing === s.id) { h += formHtml(); return; }
+      h += '<div class="item"><div class="txt"><div class="name">' + esc(s.name) + '</div>' +
+        '<div class="meta"><span class="tag">' + esc(SLOT_LABEL[s.slot] || "–") + '</span>' + esc(s.dose || "") + '</div>' +
+        (s.hint ? '<div class="meta">' + esc(s.hint) + '</div>' : "") + '</div>' +
+        (state.readOnly ? "" : '<button type="button" class="smallbtn" id="edit-' + esc(s.id) + '" data-act="edit" data-id="' + esc(s.id) + '">Bearbeiten</button>') + '</div>';
+    });
+    h += '</div>';
+    if (state.editing === "new") h += formHtml();
+    else if (!state.readOnly) h += '<button type="button" class="btn wide" id="add-supp" data-act="edit" data-id="new">+ Supplement hinzufügen</button>';
+    h += '</section>';
+
+    h += '<details class="ref" id="ref"><summary>Richtwerte bei 60 kg Körpergewicht</summary><div class="ref-table"><table>' +
+      '<thead><tr><th>Supplement</th><th>Menge/Tag</th><th>Hinweis</th></tr></thead><tbody>' +
+      '<tr><td>Vitamin D3</td><td>1.000–2.000 IE</td><td>Mit fetthaltiger Mahlzeit. Dauerhaft nicht über 4.000 IE. Am besten Blutwert (25-OH-D) prüfen lassen.</td></tr>' +
+      '<tr><td>Vitamin K2 (MK-7)</td><td>100–200 µg</td><td>Zusammen mit D3. Bei Blutverdünnern vorher ärztlich abklären.</td></tr>' +
+      '<tr><td>B-Komplex</td><td>1 Einheit</td><td>Morgens. Vitamin B6 dauerhaft nicht über ca. 12 mg/Tag.</td></tr>' +
+      '<tr><td>Omega-3</td><td>250–500 mg EPA+DHA, bis 1–2 g</td><td>Zu einer Hauptmahlzeit. Auf EPA+DHA achten, nicht auf die Fischölmenge.</td></tr>' +
+      '<tr><td>Kreatin</td><td>3–5 g</td><td>0,05–0,08 g pro kg. Zeitpunkt egal, wichtig ist täglich. Keine Ladephase nötig.</td></tr>' +
+      '<tr><td>Zink</td><td>7–15 mg</td><td>Zum Essen, nicht mit Kaffee, Tee oder Milch. Nicht über 25 mg.</td></tr>' +
+      '<tr><td>Magnesium</td><td>200–300 mg</td><td>Abends. Citrat oder Glycinat. Abstand zu Zink.</td></tr>' +
+      '</tbody></table></div><p class="fine" style="text-align:left">Allgemeine Richtwerte (DGE, EFSA, BfR), keine ärztliche Beratung.</p></details>';
+    return h;
+  }
+
+  const app = document.getElementById("app");
+  function render() {
+    const modeLabel = document.getElementById("mode-label");
+    modeLabel.textContent = state.mode === "db" ? "Synchronisiert" : state.mode === "local" ? "Nur in diesem Browser" : "Lädt…";
+    document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === state.view ? "true" : "false"));
+
+    if (!(state.loaded.supps && state.loaded.days)) return;
+
+    const a = document.activeElement;
+    const fid = a && a.id && app.contains(a) ? a.id : null;
+    let sel = null;
+    if (fid && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) { try { sel = [a.selectionStart, a.selectionEnd]; } catch (e) {} }
+    const refOpen = !!(document.getElementById("ref") && document.getElementById("ref").open);
+
+    let html = state.view === "history" ? viewHistory() : state.view === "list" ? viewList() : viewToday();
+    if (state.mode === "local") html = '<div class="note-banner">Deine Einträge werden nur in diesem Browser gespeichert.</div>' + html;
+    app.innerHTML = html;
+    state.popId = null;
+
+    const ref = document.getElementById("ref");
+    if (ref && refOpen) ref.open = true;
+    if (fid) {
+      const el = document.getElementById(fid);
+      if (el) {
+        el.focus({ preventScroll: true });
+        if (sel && el.setSelectionRange) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
+      }
+    }
+  }
+
+  // ---------- Events ----------
+  document.addEventListener("click", e => {
+    const t = e.target.closest("[data-act]");
+    if (!t) return;
+    const act = t.dataset.act;
+    if (act === "tab") {
+      if (state.date && state.noteDraft[state.date] !== undefined) saveNote(state.date);
+      state.view = t.dataset.v; state.editing = null; state.draft = null; state.confirmDelete = null;
+      render(); window.scrollTo(0, 0);
+    } else if (act === "toggle") toggle(t.dataset.id);
+    else if (act === "slot") takeSlot(t.dataset.slot);
+    else if (act === "day") {
+      saveNote(state.date);
+      const next = addDays(state.date, Number(t.dataset.n));
+      if (next <= todayKey()) { state.date = next; state.noteStatus = ""; render(); }
+    } else if (act === "goto") {
+      saveNote(state.date);
+      state.date = t.dataset.k; state.view = "today"; state.noteStatus = "";
+      render(); window.scrollTo(0, 0);
+    } else if (act === "addfirst") { state.view = "list"; startEdit("new"); }
+    else if (act === "edit") startEdit(t.dataset.id);
+    else if (act === "cancel") { state.editing = null; state.draft = null; state.confirmDelete = null; render(); }
+    else if (act === "del") { state.confirmDelete = state.editing; render(); }
+    else if (act === "del-yes") deleteSupp(state.editing);
+  });
+
+  document.addEventListener("input", e => {
+    const t = e.target;
+    if (t.id === "day-note") noteInput(t.value);
+    else if (t.dataset && t.dataset.f && state.draft) state.draft[t.dataset.f] = t.value;
+  });
+  document.addEventListener("change", e => {
+    const t = e.target;
+    if (t.dataset && t.dataset.f && state.draft) state.draft[t.dataset.f] = t.value;
+  });
+  document.addEventListener("focusout", e => {
+    if (e.target.id === "day-note") { clearTimeout(noteTimer); saveNote(state.date); }
+  });
+  document.addEventListener("submit", e => {
+    if (e.target.id === "supp-form") { e.preventDefault(); saveEdit(); }
+  });
+
+  // Roll over to the new day if the page stays open past midnight
+  let lastToday = todayKey();
+  setInterval(() => {
+    const now = todayKey();
+    if (now !== lastToday) {
+      if (state.date === lastToday) state.date = now;
+      lastToday = now;
+      render();
+    }
+  }, 60000);
+
+  render();
+  store.init();
+})();
+</script>
