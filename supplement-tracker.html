@@ -54,9 +54,12 @@ button { cursor: pointer; }
 .brand { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .brand b { font-family: var(--f-display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
 .brand span { font-size: 0.75rem; color: var(--muted); }
-.tabs { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--line-soft); border-radius: 999px; padding: 3px; }
-.tabs button { border: 0; background: transparent; border-radius: 999px; padding: 0.5rem 0.4rem; font-weight: 600; font-size: 0.9rem; color: var(--muted); }
-.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.tabs { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--line-soft); border-radius: 999px; padding: 3px; }
+.tabs::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 6px) / 3); border-radius: 999px; background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / 0.1); transition: transform 0.4s cubic-bezier(0.3, 1.35, 0.5, 1); }
+.tabs[data-i="1"]::before { transform: translateX(100%); }
+.tabs[data-i="2"]::before { transform: translateX(200%); }
+.tabs button { position: relative; border: 0; background: transparent; border-radius: 999px; padding: 0.5rem 0.4rem; font-weight: 600; font-size: 0.9rem; color: var(--muted); transition: color 0.25s; }
+.tabs button[aria-selected="true"] { color: var(--ink); }
 
 main { display: grid; gap: 1.1rem; }
 
@@ -88,9 +91,11 @@ main { display: grid; gap: 1.1rem; }
 .count.done { color: var(--accent); font-weight: 600; }
 .smallbtn { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 0.3rem 0.75rem; font-size: 0.8rem; font-weight: 600; }
 
-.row { width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.9rem; padding: 0.8rem 1rem; border: 0; background: transparent; text-align: left; min-height: 3.6rem; }
+.row { position: relative; overflow: hidden; width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.9rem; padding: 0.8rem 1rem; border: 0; background: transparent; text-align: left; min-height: 3.6rem; }
 .row + .row { border-top: 1px solid var(--line-soft); }
 .row:hover { background: var(--line-soft); }
+.row > * { position: relative; }
+.row .sweep { position: absolute; inset: 0; background: var(--accent-soft); transform-origin: left center; pointer-events: none; }
 .row .txt { min-width: 0; display: grid; gap: 0.1rem; }
 .row .name { font-weight: 600; }
 .row .dose { font-family: var(--f-mono); font-size: 0.8rem; color: var(--muted); }
@@ -102,10 +107,23 @@ main { display: grid; gap: 1.1rem; }
 .cap { --cap-l: var(--surface); --cap-r: var(--line-soft); --cap-b: var(--line);
   width: 2.5rem; height: 1.15rem; border-radius: 999px; border: 1.5px solid var(--cap-b);
   background: linear-gradient(90deg, var(--cap-l) 0 50%, var(--cap-r) 50% 100%);
-  transform: rotate(-14deg); transition: transform 0.2s, background 0.2s; }
+  transform: rotate(-14deg); transition: transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s; }
 .row[aria-pressed="true"] .cap { --cap-l: var(--accent); --cap-r: var(--accent-soft); --cap-b: var(--accent); }
-.row.pop .cap { animation: pop 0.35s ease-out; }
-@keyframes pop { 0% { transform: rotate(-14deg) scale(1); } 45% { transform: rotate(-4deg) scale(1.25); } 100% { transform: rotate(-14deg) scale(1); } }
+.row:hover .cap { transform: rotate(-4deg) scale(1.08); }
+
+/* Motion */
+.fx-layer { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; overflow: hidden; }
+.spark { position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 999px; }
+.in, .in-left, .in-right { animation: rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.in-left { animation-name: from-left; }
+.in-right { animation-name: from-right; }
+@keyframes rise { from { opacity: 0.2; transform: translateY(12px); } }
+@keyframes from-left { from { opacity: 0.2; transform: translateX(-22px); } }
+@keyframes from-right { from { opacity: 0.2; transform: translateX(22px); } }
+.in .track i { animation: grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 45ms + 120ms); }
+@keyframes grow { from { width: 0; } }
+.in .cal button { animation: tile 0.4s cubic-bezier(0.3, 1.4, 0.5, 1) both; animation-delay: calc(var(--d, 0) * 14ms + 120ms); }
+@keyframes tile { from { transform: scale(0.4); opacity: 0.2; } }
 
 /* Note */
 .field { display: grid; gap: 0.35rem; }
@@ -176,8 +194,9 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
   .row { gap: 0.7rem; padding-inline: 0.8rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .row.pop .cap { animation: none; }
-  .pills i, .cap { transition: none; }
+  .in, .in-left, .in-right, .in .track i, .in .cal button { animation: none; }
+  .pills i, .cap, .tabs::before, .tabs button { transition: none; }
+  .row:hover .cap { transform: rotate(-14deg); }
 }
 </style>
 
@@ -234,7 +253,8 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     noteDraft: {},
     noteStatus: "",
     readOnly: false,
-    popId: null
+    fx: [],                   // one-shot effects to play after the next render
+    enter: "in"               // entrance animation for the next view change
   };
 
   const sortedSupps = () => state.supps.slice().sort((a, b) =>
@@ -339,13 +359,32 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
   }
 
   // ---------- Actions ----------
+  const allTaken = (list, taken) => list.length > 0 && list.every(s => taken[s.id]);
+
+  // Queue the slot and day celebrations for whatever just became complete
+  function queueCompletionFx(before, after, slotIds) {
+    slotIds.forEach(slotId => {
+      const list = state.supps.filter(s => s.slot === slotId);
+      if (!allTaken(list, before) && allTaken(list, after)) state.fx.push({ type: "slot", slot: slotId });
+    });
+    if (!allTaken(state.supps, before) && allTaken(state.supps, after)) state.fx.push({ type: "day" });
+  }
+
   function toggle(id) {
     if (state.readOnly) return;
     const k = state.date;
     const day = dayOf(k);
-    const taken = Object.assign({}, day.taken || {});
-    if (taken[id]) delete taken[id];
-    else { taken[id] = k === todayKey() ? nowHM() : "nachgetragen"; state.popId = id; }
+    const before = day.taken || {};
+    const taken = Object.assign({}, before);
+    const supp = state.supps.find(s => s.id === id);
+    if (taken[id]) {
+      delete taken[id];
+      state.fx.push({ type: "unpop", id });
+    } else {
+      taken[id] = k === todayKey() ? nowHM() : "nachgetragen";
+      state.fx.push({ type: "pop", id, delay: 0 });
+      if (supp) queueCompletionFx(before, taken, [supp.slot]);
+    }
     state.days = Object.assign({}, state.days, { [k]: Object.assign({}, day, { date: k, taken }) });
     store.saveDay(k);
     render();
@@ -355,12 +394,178 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     if (state.readOnly) return;
     const k = state.date;
     const day = dayOf(k);
-    const taken = Object.assign({}, day.taken || {});
+    const before = day.taken || {};
+    const taken = Object.assign({}, before);
     const stamp = k === todayKey() ? nowHM() : "nachgetragen";
-    state.supps.filter(s => s.slot === slotId && !taken[s.id]).forEach(s => { taken[s.id] = stamp; });
+    sortedSupps().filter(s => s.slot === slotId && !taken[s.id]).forEach((s, i) => {
+      taken[s.id] = stamp;
+      state.fx.push({ type: "pop", id: s.id, delay: i * 110 });
+    });
+    queueCompletionFx(before, taken, [slotId]);
     state.days = Object.assign({}, state.days, { [k]: Object.assign({}, day, { date: k, taken }) });
     store.saveDay(k);
     render();
+  }
+
+  // ---------- Effects ----------
+  const reduceMotion = () => { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } };
+  const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  function burst(el, delay) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const layer = document.createElement("div");
+    layer.className = "fx-layer";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(layer);
+    const colors = [cssVar("--accent"), cssVar("--amber"), cssVar("--heat-2")];
+    const n = 11;
+    let left = n;
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement("span");
+      s.className = "spark";
+      s.style.background = colors[i % colors.length];
+      layer.appendChild(s);
+      const angle = (i / n) * Math.PI * 2 + rand(-0.25, 0.25);
+      const dist = rand(26, 48);
+      const dx = Math.cos(angle) * dist, dy = Math.sin(angle) * dist;
+      s.animate([
+        { transform: "translate(" + cx + "px," + cy + "px) scale(1)", opacity: 1 },
+        { transform: "translate(" + (cx + dx) + "px," + (cy + dy) + "px) scale(0.2)", opacity: 0 }
+      ], { duration: rand(520, 760), delay, easing: "cubic-bezier(0.15, 0.7, 0.3, 1)", fill: "both" })
+        .finished.catch(() => {}).then(() => { if (--left === 0) layer.remove(); });
+    }
+  }
+
+  function fxPop(id, delay) {
+    const row = document.getElementById("row-" + id);
+    if (!row) return;
+    const cap = row.querySelector(".cap");
+    const status = row.querySelector(".status");
+    const sweep = document.createElement("span");
+    sweep.className = "sweep";
+    row.prepend(sweep);
+    sweep.animate([
+      { transform: "scaleX(0)", opacity: 1 },
+      { transform: "scaleX(1)", opacity: 1, offset: 0.55 },
+      { transform: "scaleX(1)", opacity: 0 }
+    ], { duration: 750, delay, easing: "ease-out", fill: "both" })
+      .finished.catch(() => {}).then(() => sweep.remove());
+    cap.animate([
+      { transform: "rotate(-14deg) scale(1)" },
+      { transform: "rotate(12deg) scale(1.45)", offset: 0.4 },
+      { transform: "rotate(-22deg) scale(0.94)", offset: 0.72 },
+      { transform: "rotate(-14deg) scale(1)" }
+    ], { duration: 600, delay, easing: "ease-out" });
+    status.animate([
+      { opacity: 0, transform: "translateX(10px)" },
+      { opacity: 1, transform: "none" }
+    ], { duration: 320, delay: delay + 140, easing: "ease-out", fill: "backwards" });
+    const pill = document.querySelector('.pills i[data-id="' + CSS.escape(id) + '"]');
+    if (pill) pill.animate([{ transform: "scaleY(1)" }, { transform: "scaleY(2.2)" }, { transform: "scaleY(1)" }],
+      { duration: 450, delay: delay + 100, easing: "ease-out" });
+    burst(cap, delay + 60);
+  }
+
+  function fxUnpop(id) {
+    const row = document.getElementById("row-" + id);
+    if (!row) return;
+    row.querySelector(".cap").animate([
+      { transform: "rotate(-14deg) scale(0.7)" },
+      { transform: "rotate(-14deg) scale(1)" }
+    ], { duration: 300, easing: "cubic-bezier(0.3, 1.6, 0.5, 1)" });
+  }
+
+  function fxSlot(slotId, delay) {
+    const head = document.getElementById("slot-" + slotId);
+    const box = head && head.closest(".slot");
+    if (!box) return;
+    box.animate([
+      { boxShadow: "0 0 0 0 " + cssVar("--accent") },
+      { boxShadow: "0 0 0 14px transparent" }
+    ], { duration: 900, delay, easing: "ease-out" });
+    const count = box.querySelector(".count");
+    if (count) count.animate([{ transform: "scale(1)" }, { transform: "scale(1.5)" }, { transform: "scale(1)" }],
+      { duration: 500, delay, easing: "cubic-bezier(0.3, 1.6, 0.5, 1)" });
+  }
+
+  function confetti() {
+    const c = document.createElement("canvas");
+    c.className = "fx-layer";
+    c.setAttribute("aria-hidden", "true");
+    document.body.appendChild(c);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = window.innerWidth, H = window.innerHeight;
+    c.width = W * dpr; c.height = H * dpr;
+    const ctx = c.getContext("2d");
+    ctx.scale(dpr, dpr);
+    const colors = [cssVar("--accent"), cssVar("--amber"), cssVar("--heat-2"), cssVar("--heat-1"), cssVar("--accent-soft")];
+    const parts = Array.from({ length: Math.min(110, Math.round(W / 4)) }, () => ({
+      x: W / 2 + rand(-W * 0.18, W * 0.18), y: H * 0.38,
+      vx: rand(-8, 8), vy: rand(-15, -6),
+      r: rand(0, Math.PI * 2), vr: rand(-0.25, 0.25),
+      w: rand(11, 20), a: pick(colors), b: pick(colors)
+    }));
+    const round = (x, y, w, h, rad) => {
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(x, y, w, h, rad); else ctx.rect(x, y, w, h);
+    };
+    const start = performance.now();
+    function frame(t) {
+      const el = t - start;
+      ctx.clearRect(0, 0, W, H);
+      ctx.globalAlpha = Math.max(0, 1 - Math.max(0, el - 1900) / 800);
+      parts.forEach(p => {
+        p.vy += 0.32; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        const h = p.w * 0.42;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.r);
+        ctx.fillStyle = p.b;
+        round(-p.w / 2, -h / 2, p.w, h, h / 2); ctx.fill();
+        ctx.beginPath(); ctx.rect(-p.w / 2, -h / 2, p.w / 2, h); ctx.clip();
+        ctx.fillStyle = p.a;
+        round(-p.w / 2, -h / 2, p.w, h, h / 2); ctx.fill();
+        ctx.restore();
+      });
+      if (el < 2700) requestAnimationFrame(frame); else c.remove();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function fxDay(delay) {
+    setTimeout(confetti, delay);
+    const label = document.getElementById("progress-label");
+    if (label) label.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }],
+      { duration: 600, delay, easing: "cubic-bezier(0.3, 1.6, 0.5, 1)" });
+    document.querySelectorAll(".pills i").forEach((p, i) => p.animate(
+      [{ transform: "translateY(0)" }, { transform: "translateY(-6px)" }, { transform: "translateY(0)" }],
+      { duration: 420, delay: delay + i * 55, easing: "ease-out" }));
+  }
+
+  function countUp(el) {
+    const target = Number(el.dataset.count);
+    if (!target) return;
+    const start = performance.now(), dur = 800;
+    const step = t => {
+      const p = Math.min(1, (t - start) / dur);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    el.textContent = "0";
+    requestAnimationFrame(step);
+  }
+
+  function runFx(queue) {
+    const lastPop = queue.filter(f => f.type === "pop").reduce((m, f) => Math.max(m, f.delay || 0), 0);
+    queue.forEach(f => {
+      if (f.type === "pop") fxPop(f.id, f.delay || 0);
+      else if (f.type === "unpop") fxUnpop(f.id);
+      else if (f.type === "slot") fxSlot(f.slot, lastPop + 250);
+      else if (f.type === "day") fxDay(lastPop + 350);
+    });
   }
 
   let noteTimer;
@@ -473,9 +678,9 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     }
 
     h += '<section class="progress" aria-label="Fortschritt">' +
-      '<div class="progress-row"><strong class="num">' + done + ' / ' + supps.length + '</strong><span>' +
+      '<div class="progress-row"><strong class="num" id="progress-label">' + done + ' / ' + supps.length + '</strong><span>' +
       (done === supps.length ? "Alles genommen" : (supps.length - done) + " noch offen") + '</span></div>' +
-      '<div class="pills" aria-hidden="true">' + supps.map(s => '<i class="' + (taken[s.id] ? "on" : "") + '"></i>').join("") + '</div></section>';
+      '<div class="pills" aria-hidden="true">' + supps.map(s => '<i data-id="' + esc(s.id) + '" class="' + (taken[s.id] ? "on" : "") + '"></i>').join("") + '</div></section>';
 
     SLOTS.forEach(slot => {
       const list = supps.filter(s => s.slot === slot.id);
@@ -488,7 +693,7 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
         '</div></div>';
       list.forEach(s => {
         const t = taken[s.id];
-        h += '<button type="button" class="row' + (state.popId === s.id ? " pop" : "") + '" id="row-' + esc(s.id) + '" data-act="toggle" data-id="' + esc(s.id) + '" aria-pressed="' + (t ? "true" : "false") + '">' +
+        h += '<button type="button" class="row" id="row-' + esc(s.id) + '" data-act="toggle" data-id="' + esc(s.id) + '" aria-pressed="' + (t ? "true" : "false") + '">' +
           '<span class="cap" aria-hidden="true"></span>' +
           '<span class="txt"><span class="name">' + esc(s.name) + '</span>' +
           (s.dose ? '<span class="dose">' + esc(s.dose) + '</span>' : "") +
@@ -520,9 +725,9 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     const st = streak();
 
     let h = '<section class="stats">' +
-      '<div class="stat"><b>' + st + '</b><span>' + (st === 1 ? "Tag" : "Tage") + ' in Folge komplett</span></div>' +
-      '<div class="stat"><b>' + rate + '<small style="font-size:0.9rem">%</small></b><span>eingenommen' + (win.length ? ", letzte " + win.length + " " + (win.length === 1 ? "Tag" : "Tage") : "") + '</span></div>' +
-      '<div class="stat"><b>' + full + '</b><span>komplette Tage' + (win.length ? " von " + win.length : "") + '</span></div>' +
+      '<div class="stat"><b data-count="' + st + '">' + st + '</b><span>' + (st === 1 ? "Tag" : "Tage") + ' in Folge komplett</span></div>' +
+      '<div class="stat"><b><span data-count="' + rate + '">' + rate + '</span><small style="font-size:0.9rem">%</small></b><span>eingenommen' + (win.length ? ", letzte " + win.length + " " + (win.length === 1 ? "Tag" : "Tage") : "") + '</span></div>' +
+      '<div class="stat"><b data-count="' + full + '">' + full + '</b><span>komplette Tage' + (win.length ? " von " + win.length : "") + '</span></div>' +
       '</section>';
 
     // Calendar: 6 weeks ending with the current week, Monday first
@@ -538,7 +743,7 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
       const f = fraction(k);
       const lvl = f === 0 ? "" : f === 1 ? "l3" : f >= 0.5 ? "l2" : "l1";
       const pct = Math.round(f * 100);
-      h += '<button type="button" class="' + lvl + (k === today ? " today" : "") + '" data-act="goto" data-k="' + k + '" aria-label="' + esc(weekday(k) + ", " + dayMonth(k) + ": " + pct + " Prozent") + '">' + parseKey(k).getDate() + '</button>';
+      h += '<button type="button" style="--d:' + i + '" class="' + lvl + (k === today ? " today" : "") + '" data-act="goto" data-k="' + k + '" aria-label="' + esc(weekday(k) + ", " + dayMonth(k) + ": " + pct + " Prozent") + '">' + parseKey(k).getDate() + '</button>';
     }
     h += '</div><div class="legend"><span>weniger</span><i style="background:var(--heat-0)"></i><i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><span>alles genommen</span></div>' +
       '<p class="fine" style="margin:0;text-align:left">Tippe auf einen Tag, um ihn anzusehen oder nachzutragen.</p></section>';
@@ -617,12 +822,38 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
   }
 
   const app = document.getElementById("app");
+  const VIEWS = ["today", "history", "list"];
+  let lastHtml = "";
   function render() {
     const modeLabel = document.getElementById("mode-label");
     modeLabel.textContent = state.mode === "db" ? "Synchronisiert" : state.mode === "local" ? "Nur in diesem Browser" : "Lädt…";
     document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.v === state.view ? "true" : "false"));
+    document.querySelector(".tabs").dataset.i = String(VIEWS.indexOf(state.view));
 
     if (!(state.loaded.supps && state.loaded.days)) return;
+
+    let html = state.view === "history" ? viewHistory() : state.view === "list" ? viewList() : viewToday();
+    if (state.mode === "local") html = '<div class="note-banner">Deine Einträge werden nur in diesem Browser gespeichert.</div>' + html;
+    // Leave the DOM alone when nothing changed, so running animations are not cut off
+    if (html !== lastHtml) replaceView(html);
+
+    const motion = !reduceMotion();
+    if (state.enter) {
+      if (motion) {
+        Array.from(app.children).forEach((c, i) => { c.classList.add(state.enter); c.style.setProperty("--i", Math.min(i, 10)); });
+        if (state.view === "history") app.querySelectorAll("[data-count]").forEach(countUp);
+      }
+      state.enter = null;
+    }
+    if (state.fx.length) {
+      const queue = state.fx;
+      state.fx = [];
+      if (motion) requestAnimationFrame(() => runFx(queue));
+    }
+  }
+
+  function replaceView(html) {
+    lastHtml = html;
 
     const a = document.activeElement;
     const fid = a && a.id && app.contains(a) ? a.id : null;
@@ -630,10 +861,7 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     if (fid && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) { try { sel = [a.selectionStart, a.selectionEnd]; } catch (e) {} }
     const refOpen = !!(document.getElementById("ref") && document.getElementById("ref").open);
 
-    let html = state.view === "history" ? viewHistory() : state.view === "list" ? viewList() : viewToday();
-    if (state.mode === "local") html = '<div class="note-banner">Deine Einträge werden nur in diesem Browser gespeichert.</div>' + html;
     app.innerHTML = html;
-    state.popId = null;
 
     const ref = document.getElementById("ref");
     if (ref && refOpen) ref.open = true;
@@ -653,6 +881,7 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     const act = t.dataset.act;
     if (act === "tab") {
       if (state.date && state.noteDraft[state.date] !== undefined) saveNote(state.date);
+      if (state.view !== t.dataset.v) state.enter = "in";
       state.view = t.dataset.v; state.editing = null; state.draft = null; state.confirmDelete = null;
       render(); window.scrollTo(0, 0);
     } else if (act === "toggle") toggle(t.dataset.id);
@@ -660,12 +889,12 @@ details.ref summary { font-family: var(--f-display); font-weight: 700; cursor: p
     else if (act === "day") {
       saveNote(state.date);
       const next = addDays(state.date, Number(t.dataset.n));
-      if (next <= todayKey()) { state.date = next; state.noteStatus = ""; render(); }
+      if (next <= todayKey()) { state.date = next; state.noteStatus = ""; state.enter = Number(t.dataset.n) < 0 ? "in-left" : "in-right"; render(); }
     } else if (act === "goto") {
       saveNote(state.date);
-      state.date = t.dataset.k; state.view = "today"; state.noteStatus = "";
+      state.date = t.dataset.k; state.view = "today"; state.noteStatus = ""; state.enter = "in";
       render(); window.scrollTo(0, 0);
-    } else if (act === "addfirst") { state.view = "list"; startEdit("new"); }
+    } else if (act === "addfirst") { state.view = "list"; state.enter = "in"; startEdit("new"); }
     else if (act === "edit") startEdit(t.dataset.id);
     else if (act === "cancel") { state.editing = null; state.draft = null; state.confirmDelete = null; render(); }
     else if (act === "del") { state.confirmDelete = state.editing; render(); }
